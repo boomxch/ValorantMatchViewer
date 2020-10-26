@@ -115,26 +115,5 @@ namespace ValorantMatchViewer
             var d = isHorizontal ? (double)length / 1920 : (double)length / 1080;
             return (int)Math.Round(d * (isHorizontal ? bmp.Width : bmp.Height));
         }
-
-        public int CountWhiteArea(Bitmap bitmap)
-        {
-            const int threshold = 230;
-
-            var ans = 0;
-
-            var data = bitmap.LockBits(
-                new Rectangle(0, 0, bitmap.Width, bitmap.Height),
-                ImageLockMode.ReadWrite,
-                PixelFormat.Format32bppArgb);
-            var buf = new byte[bitmap.Width * bitmap.Height * 4];
-            Marshal.Copy(data.Scan0, buf, 0, buf.Length);
-
-            for (var i = 0; i < buf.Length; i += 4)
-                if (buf[i] >= threshold && buf[i + 1] >= threshold && buf[i + 2] >= threshold) ans++;
-
-            bitmap.UnlockBits(data);
-
-            return ans;
-        }
     }
 }

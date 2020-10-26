@@ -25,6 +25,9 @@ namespace ValorantMatchViewer
             var page = _tesseract.Process(pix);
             var text = page.GetText().Replace(" ", "").Replace("　", "").Replace("\n", "");
 
+            pix.Dispose();
+            page.Dispose();
+
             return text;
         }
 

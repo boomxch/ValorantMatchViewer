@@ -1,8 +1,11 @@
-﻿using System;
+﻿using System.Collections.Generic;
+using System.Diagnostics;
 using System.Drawing;
-using System.Drawing.Drawing2D;
 using System.Drawing.Imaging;
 using System.Runtime.InteropServices;
+using System.Windows;
+using Point = System.Drawing.Point;
+using Size = System.Drawing.Size;
 
 namespace ValorantMatchViewer
 {
@@ -13,17 +16,42 @@ namespace ValorantMatchViewer
             var roundBlue = new ValorantOcr(ValorantOcr.OcrWhiteVariablesEnum.Round, ValorantOcr.AreaEnum.RoundBlue);
             var roundRed = new ValorantOcr(ValorantOcr.OcrWhiteVariablesEnum.Round, ValorantOcr.AreaEnum.RoundRed);
             var time = new ValorantOcr(ValorantOcr.OcrWhiteVariablesEnum.Time, ValorantOcr.AreaEnum.Time);
-            var killLog1 = new ValorantOcr(ValorantOcr.OcrWhiteVariablesEnum.KillLog,ValorantOcr.AreaEnum.KillLog1);
-            var killLog2 = new ValorantOcr(ValorantOcr.OcrWhiteVariablesEnum.KillLog,ValorantOcr.AreaEnum.KillLog2);
-            var killLog3 = new ValorantOcr(ValorantOcr.OcrWhiteVariablesEnum.KillLog,ValorantOcr.AreaEnum.KillLog3);
+            var killLog1 = new ValorantOcr(ValorantOcr.OcrWhiteVariablesEnum.KillLog, ValorantOcr.AreaEnum.KillLog1);
+            var killLog2 = new ValorantOcr(ValorantOcr.OcrWhiteVariablesEnum.KillLog, ValorantOcr.AreaEnum.KillLog2);
+            var killLog3 = new ValorantOcr(ValorantOcr.OcrWhiteVariablesEnum.KillLog, ValorantOcr.AreaEnum.KillLog3);
 
-            var sample = new Bitmap(Image.FromFile("sample/sample1.png"));
-            var d1 = time.GetTextFromImage(sample);
-            var d2 = roundBlue.GetTextFromImage(sample);
-            var d3 = roundRed.GetTextFromImage(sample);
-            var k1 = killLog1.GetTextFromImage(sample);
-            var k2 = killLog2.GetTextFromImage(sample);
-            var k3 = killLog3.GetTextFromImage(sample);
+            var sw = new Stopwatch();
+            sw.Start();
+            var vm = new VideoManager();
+            var count = -1;
+            var roundStartTime = new List<int>();
+            var timeNow = 0;
+            foreach (var bmp in vm.GetScreenshotsFromVideo("Video/20201018_774049452_VALORANT_1.mp4", 5 * 1000))
+            {
+                // time,round と キルログで閾値を変えたほうが良い logは武器とキャラと数字を消さないといけない
+                // timeやラウンドは前後の結果をリスペクトしないとまともに動かない
+                // 同様にキルログは表示された前後の5秒間(?)を数フレームずつ解析して平均的な値をとりたい(それぞれのフレームで誰と誰が戦ったかを求めてその結果の平均)
+                bmp.Save("testAll.png");
+                var d1 = time.GetTextFromImage(bmp);
+                var d2 = roundBlue.GetTextFromImage(bmp);
+                var d3 = roundRed.GetTextFromImage(bmp);
+                var k1 = killLog1.GetTextFromImage(bmp);
+                var k2 = killLog2.GetTextFromImage(bmp);
+                var k3 = killLog3.GetTextFromImage(bmp);
+
+                if (!int.TryParse(d2, out var test) || !int.TryParse(d3, out var test2))
+                    MessageBox.Show(d2 + " " + d3);
+
+                if (int.Parse(d2) + int.Parse(d3) > count)
+                {
+                    count = int.Parse(d2) + int.Parse(d3);
+                    roundStartTime.Add(timeNow);
+                }
+
+                timeNow += 5;
+            }
+            sw.Stop();
+            MessageBox.Show(sw.Elapsed.TotalSeconds + " S");
         }
     }
 
@@ -74,6 +102,7 @@ namespace ValorantMatchViewer
         {
             img = ip.TrimImageFromFullHd(img, area.XY, area.WH);
             ip.ConvertImage(img);
+            img.Save("test.png");
             return ocr.GetTextFromBitmap(img);
         }
 
@@ -167,7 +196,7 @@ namespace ValorantMatchViewer
     {
         public override void ConvertImage(Bitmap bitmap)
         {
-            const int threshold = 180;
+            const int threshold = 210;
 
             var data = bitmap.LockBits(
                 new Rectangle(0, 0, bitmap.Width, bitmap.Height),
